@@ -1,0 +1,12 @@
+{
+  "appName":      { "message": "QuickSeek for Videos" },
+  "appDesc":      { "message": "自定义视频快进和快退时长" },
+  "headerSub":    { "message": "按 ← → 键控制视频快进 / 快退，时长自定义" },
+  "sectionLabel": { "message": "跳转时长" },
+  "seekUnit":     { "message": "秒 / 次" },
+  "toggleLabel":  { "message": "显示操作提示" },
+  "toggleSub":    { "message": "跳转时在视频上显示秒数" },
+  "autoSave":     { "message": "自动保存" },
+  "saved":        { "message": "已保存 ✓" },
+  "footerSites":  { "message": "支持所有含 <video> 标签的网站" }
+}

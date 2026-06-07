@@ -1,0 +1,12 @@
+{
+  "appName":      { "message": "QuickSeek for Videos" },
+  "appDesc":      { "message": "Customize arrow key seek duration for videos." },
+  "headerSub":    { "message": "Press ← → to seek forward / backward" },
+  "sectionLabel": { "message": "Seek Duration" },
+  "seekUnit":     { "message": "sec / step" },
+  "toggleLabel":  { "message": "Show Seek Indicator" },
+  "toggleSub":    { "message": "Display duration overlay on video" },
+  "autoSave":     { "message": "Auto-saved" },
+  "saved":        { "message": "Saved ✓" },
+  "footerSites":  { "message": "Works on any site with <video> elements" }
+}

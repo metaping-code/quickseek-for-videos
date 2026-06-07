@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickSeek for Videos</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0e12;
+      --surface: #18181f;
+      --border: #2a2a38;
+      --accent: #7c6dfa;
+      --accent2: #fa6d8f;
+      --text: #f0f0f8;
+      --muted: #7878a0;
+      --radius: 12px;
+    }
+
+    body {
+      width: 300px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Sans SC', 'PingFang SC', sans-serif;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #1a1030 0%, #0e1428 100%);
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      width: 120px; height: 120px;
+      background: radial-gradient(circle, rgba(124,109,250,0.3) 0%, transparent 70%);
+      top: -30px; right: -20px;
+      pointer-events: none;
+    }
+    .header-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .header-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Main content */
+    .content { padding: 18px 20px 20px; }
+
+    /* Seek time setting */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .seek-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .seek-btn {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s ease;
+      line-height: 1;
+    }
+    .seek-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(124,109,250,0.1);
+    }
+    .seek-btn:active { transform: scale(0.93); }
+
+    .seek-value-wrap {
+      position: relative;
+    }
+    .seek-value {
+      font-family: 'Space Mono', monospace;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--text);
+      text-align: center;
+      width: 90px;
+      line-height: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      cursor: text;
+    }
+    .seek-value::-webkit-inner-spin-button,
+    .seek-value::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .seek-value:focus { color: var(--accent); }
+    .seek-unit {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 2px;
+    }
+
+    /* Slider */
+    .slider-wrap { margin-bottom: 16px; }
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--pct, 13%), var(--border) var(--pct, 13%), var(--border) 100%);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,109,250,0.25);
+      cursor: pointer;
+      transition: box-shadow 0.15s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      box-shadow: 0 0 0 5px rgba(124,109,250,0.35);
+    }
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 5px;
+    }
+
+    /* Presets */
+    .presets {
+      display: flex;
+      gap: 7px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .preset-btn {
+      flex: 1;
+      min-width: 40px;
+      padding: 6px 4px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+    .preset-btn:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    .preset-btn.active {
+      border-color: var(--accent);
+      background: rgba(124,109,250,0.18);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin-bottom: 14px;
+    }
+
+    /* Toggle */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .toggle-label {
+      font-size: 13px;
+      color: var(--text);
+    }
+    .toggle-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+    .toggle {
+      position: relative;
+      width: 40px; height: 22px;
+      flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 11px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 16px; height: 16px;
+      left: 3px; top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-track {
+      background: var(--accent);
+    }
+    .toggle input:checked + .toggle-track::after {
+      transform: translateX(18px);
+    }
+
+    /* Save indicator */
+    .save-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 14px;
+      height: 18px;
+      transition: all 0.3s;
+    }
+    .save-indicator.saved {
+      color: #5dde8b;
+    }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* Footer */
+    .footer {
+      padding: 10px 20px 14px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sites {
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .version {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--border);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-title">QuickSeek for Videos</div>
+    <div class="header-sub" data-i18n="headerSub"></div>
+  </div>
+
+  <div class="content">
+    <div class="section-label" data-i18n="sectionLabel"></div>
+
+    <div class="seek-display">
+      <button class="seek-btn" id="decBtn">−</button>
+      <div class="seek-value-wrap">
+        <input type="number" class="seek-value" id="seekVal" value="5" min="1" max="60" />
+        <div class="seek-unit" data-i18n="seekUnit"></div>
+      </div>
+      <button class="seek-btn" id="incBtn">+</button>
+    </div>
+
+    <div class="slider-wrap">
+      <input type="range" id="slider" min="1" max="60" value="5" step="1" />
+      <div class="slider-labels"><span>1s</span><span>30s</span><span>60s</span></div>
+    </div>
+
+    <div class="presets" id="presets">
+      <button class="preset-btn" data-val="2">2s</button>
+      <button class="preset-btn" data-val="5">5s</button>
+      <button class="preset-btn" data-val="10">10s</button>
+      <button class="preset-btn" data-val="15">15s</button>
+      <button class="preset-btn" data-val="30">30s</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label" data-i18n="toggleLabel"></div>
+        <div class="toggle-sub" data-i18n="toggleSub"></div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="toastToggle" checked />
+        <div class="toggle-track"></div>
+      </label>
+    </div>
+
+    <div class="save-indicator" id="saveInd">
+      <div class="dot"></div>
+      <span data-i18n="autoSave"></span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="sites" data-i18n="footerSites"></div>
+    <div class="version">v1.0</div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
