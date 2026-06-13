@@ -20,6 +20,7 @@
 ## 安装
 
 **Chrome 应用商店（推荐）** — 搜索 **QuickSeek for Videos** 安装。
+https://chromewebstore.google.com/detail/fihlcdlonopbcfbjcabobabggdbapoah?utm_source=item-share-cb
 
 **手动加载：**
 
