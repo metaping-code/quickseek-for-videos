@@ -14,12 +14,40 @@
     showT = e.detail.showToast;
   });
 
-  // 优先选正在播放且已就绪的 video，其次已就绪的，最后兜底取第一个
+  var MIN_SIZE = 120; // 小于这个尺寸的视频（缩略图预览、小图标动画）不接管
+
+  // 视频在当前视口内可见的面积；不可见返回 0
+  function visibleArea(v) {
+    var r = v.getBoundingClientRect();
+    if (r.width < MIN_SIZE || r.height < MIN_SIZE) return 0;
+    var w = Math.min(r.right, window.innerWidth) - Math.max(r.left, 0);
+    var h = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
+    if (w <= 0 || h <= 0) return 0;
+    var cs = getComputedStyle(v);
+    if (cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) return 0;
+    return w * h;
+  }
+
+  // 选出要控制的视频：
+  // 1. 画中画中的视频优先（它可能不在页面可视区域内）
+  // 2. 只考虑可见且足够大的视频，排除静音循环的背景视频
+  // 3. 正在播放的优先，其次可见面积最大的
+  // 没有符合条件的视频时返回 null，方向键交还给网页
   function getVideo() {
-    var vids = Array.from(document.querySelectorAll('video'));
-    return vids.find(function (v) { return !v.paused && v.readyState >= 2; })
-      || vids.find(function (v) { return v.readyState >= 2; })
-      || vids[0] || null;
+    var pip = document.pictureInPictureElement;
+    if (pip && pip.tagName === 'VIDEO') return pip;
+
+    var best = null, bestPlaying = false, bestArea = 0;
+    document.querySelectorAll('video').forEach(function (v) {
+      if (v.muted && v.loop) return; // 背景装饰视频的典型特征
+      var area = visibleArea(v);
+      if (!area) return;
+      var playing = !v.paused && v.readyState >= 2;
+      if (!best || (playing && !bestPlaying) || (playing === bestPlaying && area > bestArea)) {
+        best = v; bestPlaying = playing; bestArea = area;
+      }
+    });
+    return best;
   }
 
   // 判断焦点是否在输入框内，是则方向键不触发跳转
@@ -34,6 +62,11 @@
   var toastEl = null, toastUnit = null, toastTimer = null;
   function showToast(delta, video) {
     if (!showT) return;
+
+    // 单页应用切换页面时可能把提示元素从 DOM 中移除，此时重新挂载
+    if (toastEl && !toastEl.isConnected) {
+      (document.body || document.documentElement).appendChild(toastEl);
+    }
 
     if (!toastEl) {
       toastEl = document.createElement('div');
@@ -59,7 +92,7 @@
       toastUnit.style.display = 'inline-block';
       toastEl.appendChild(valEl);
       toastEl.appendChild(toastUnit);
-      document.body.appendChild(toastEl);
+      (document.body || document.documentElement).appendChild(toastEl);
     }
 
     if (video) {
@@ -86,9 +119,7 @@
   }
 
   // 执行跳转：计算目标时间，写入 currentTime，显示提示
-  function seek(delta) {
-    var v = getVideo();
-    if (!v) return;
+  function seek(v, delta) {
     var target = Math.max(0, Math.min(v.duration || Infinity, v.currentTime + delta));
     v.currentTime = target;
     // 部分播放器会把 currentTime 夹回原位，下一帧渲染前再强制纠正一次
@@ -98,23 +129,33 @@
     showToast(delta, v);
   }
 
+  // 记录哪些按键的 keydown 被本插件处理了，对应的 keyup 才拦截
+  var handledKeys = {};
+
+  function block(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }
+
   // 监听 keydown（capture 阶段）：拦截方向键，阻止页面原生处理
   window.addEventListener('keydown', function (e) {
-    if (isFocusedOnInput()) return;
     if (e.code !== 'ArrowLeft' && e.code !== 'ArrowRight') return;
-    if (!getVideo()) return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    seek(e.code === 'ArrowRight' ? sec : -sec);
+    // 带 Cmd / Ctrl / Alt 的组合键属于浏览器或系统快捷键（如 Cmd+← 返回上一页），不处理
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (isFocusedOnInput()) return;
+    var v = getVideo();
+    if (!v) return;
+    handledKeys[e.code] = true;
+    block(e);
+    seek(v, e.code === 'ArrowRight' ? sec : -sec);
   }, true);
 
-  // 监听 keyup：同样拦截方向键，防止页面在抬起时触发自己的逻辑
+  // 监听 keyup：只拦截被本插件处理过的按键，防止页面在抬起时触发自己的逻辑；
+  // 其余情况（输入框内、组合键、无视频）原样放行
   window.addEventListener('keyup', function (e) {
-    if (e.code !== 'ArrowLeft' && e.code !== 'ArrowRight') return;
-    if (!getVideo()) return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
+    if (!handledKeys[e.code]) return;
+    delete handledKeys[e.code];
+    block(e);
   }, true);
 })();
