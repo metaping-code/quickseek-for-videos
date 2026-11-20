@@ -90,3 +90,6 @@ seekVal.addEventListener('change', () => {
 toastToggle.addEventListener("change", () => {
   saveSettings(parseInt(slider.value), toastToggle.checked);
 });
+
+// 版本号：从 manifest 读取，避免手动同步
+document.getElementById("version").textContent = "v" + chrome.runtime.getManifest().version;
