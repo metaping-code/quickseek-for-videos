@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>QuickSeek for Videos</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #13121c;
+      --card: #1b1b26;
+      --border: #2a2a3a;
+      --accent: #7c6dfa;
+      --text: #eeeef6;
+      --muted: #aeadc4;
+      /* 字号体系：13 插件名 / 12 标题与正文 / 11 辅助说明；数字展示另用 14 / 18 / 28 / 44 */
+      --fs-s: 11px; --fs-m: 12px; --fs-l: 13px;
+      --dim: #9594ae; /* 11px 补充说明用的次级灰 */
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    body {
+      width: 320px;
+      background: var(--bg);
+      color: var(--text);
+      font: 13px/1.4 -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+    svg { flex-shrink: 0; }
+
+    /* Header */
+    .header {
+      /* 原版的斜向渐变保留，底部再叠一层向页面背景色的过渡，去掉分隔线，让标题区自然融入下方 */
+      background:
+        linear-gradient(180deg, transparent 40%, var(--bg) 100%),
+        linear-gradient(135deg, #1a1030 0%, #0e1428 100%);
+      padding: 20px 20px 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      width: 120px; height: 120px;
+      background: radial-gradient(circle, rgba(124,109,250,0.3) 0%, transparent 70%);
+      top: -52px; right: -20px; /* 上移，让光晕在标题区底部之前就淡出，避免被截出直边 */
+      pointer-events: none;
+    }
+    .header-title {
+      font-family: var(--mono);
+      font-size: var(--fs-l);
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .header-sub {
+      font-size: var(--fs-m);
+      color: var(--muted);
+    }
+
+    /* 卡片 */
+    .cards { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; }
+    .card-title { display: flex; align-items: center; gap: 7px; font-size: var(--fs-m); font-weight: 600; letter-spacing: 0.3px; color: var(--text); margin-bottom: 10px; }
+    .card-title svg { color: var(--accent); }
+    .card-sep { height: 1px; background: var(--border); margin: 12px 0; }
+
+    /* 当前网站 */
+    .site-line { display: flex; align-items: center; gap: 10px; }
+    .site-icon {
+      width: 22px; height: 22px; border-radius: 6px; background: #252534;
+      display: grid; place-items: center; overflow: hidden;
+      font-size: var(--fs-s); font-weight: 800; color: var(--accent);
+    }
+    .site-icon img { width: 16px; height: 16px; }
+    .site-host { flex: 1; min-width: 0; font-size: var(--fs-m); font-weight: 600; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .site-switch { display: flex; align-items: center; gap: 7px; font-size: var(--fs-m); font-weight: 500; color: var(--text); cursor: pointer; }
+    .site-unavailable { font-size: var(--fs-m); color: var(--muted); }
+
+    /* 开关 */
+    .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+    .toggle input { position: absolute; opacity: 0; }
+    .toggle-track { position: absolute; inset: 0; border-radius: 10px; background: #2e2e40; transition: background 0.2s; }
+    .toggle-track::after {
+      content: ''; position: absolute; left: 3px; top: 3px;
+      width: 14px; height: 14px; border-radius: 50%; background: #fff;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-track { background: var(--accent); }
+    .toggle input:checked + .toggle-track::after { transform: translateX(16px); }
+
+    /* 快捷键示意键盘 */
+    .key-list { transition: opacity 0.2s; }
+    .key-list.off { opacity: 0.5; pointer-events: none; }
+    .kb { display: block; width: 100%; height: auto; overflow: visible; }
+    .k { fill: #2a2a3a; stroke: #40405a; stroke-width: 1; }
+    .k.hot { fill: url(#hot); stroke: #a99dff; filter: drop-shadow(0 0 4px rgba(124,109,250,0.7)); transition: all 0.15s; }
+    .kt { font: 700 var(--fs-s) var(--mono); fill: #fff; dominant-baseline: middle; }
+    .ln { fill: none; stroke: #8b7dff; stroke-width: 1.2; }
+    .lt { font-size: var(--fs-s); font-weight: 600; fill: var(--text); }
+    .ls { font-size: var(--fs-s); fill: var(--dim); }
+    .feat { cursor: pointer; outline: none; }
+    .feat:hover .k.hot, .feat:focus-visible .k.hot { stroke: #fff; }
+    .feat.off .k.hot { fill: #2a2a3a; stroke: #62627e; stroke-dasharray: 2 2; filter: none; }
+    .feat.off:hover .k.hot { stroke: var(--muted); }
+    .feat.off .kt, .feat.off .lt { fill: #8584a0; }
+    .feat.off .ln { stroke: #57577a; }
+    .feat.off .ls { fill: #706f8c; }
+    .kb-hint { margin-left: auto; font-size: var(--fs-s); font-weight: 400; letter-spacing: 0; color: var(--muted); }
+
+    /* 跳转间隔 */
+    .seek-display { display: flex; align-items: center; justify-content: center; gap: 22px; margin: 2px 0 12px; }
+    .seek-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1px solid #3a3a50; font-size: 18px; line-height: 1;
+      transition: all 0.15s;
+    }
+    .seek-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .seek-value-wrap { display: flex; align-items: baseline; justify-content: center; gap: 6px; height: 48px; min-width: 92px; }
+    .seek-value {
+      width: 60px; text-align: right;
+      font: 800 44px/48px var(--mono); color: var(--text); font-variant-numeric: tabular-nums;
+      background: none; border: none; outline: none;
+    }
+    .seek-value:focus { color: var(--accent); }
+    .seek-value::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .seek-unit { font-size: 14px; font-weight: 500; color: var(--muted); }
+    .frame-label { display: none; font-size: 28px; font-weight: 800; line-height: 48px; }
+    .seek-display.frame .seek-value, .seek-display.frame .seek-unit { display: none; }
+    .seek-display.frame .frame-label { display: block; }
+
+    input[type="range"] {
+      -webkit-appearance: none; display: block; width: 100%; height: 5px; border-radius: 3px;
+      background: linear-gradient(to right, var(--accent) var(--pct, 7%), #2e2e40 var(--pct, 7%));
+      outline: none; cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+      background: var(--accent); box-shadow: 0 0 0 4px rgba(124,109,250,0.25);
+    }
+    input[type="range"]:disabled { opacity: 0.35; cursor: default; }
+    .slider-labels { display: flex; justify-content: space-between; font-size: var(--fs-s); color: var(--muted); margin: 6px 0 12px; }
+
+    .presets { display: flex; gap: 5px; }
+    .preset-btn {
+      flex: 1; padding: 6px 0; border-radius: 999px;
+      border: 1px solid #3a3a50; font-size: var(--fs-s); font-weight: 500;
+      transition: all 0.15s;
+    }
+    .preset-btn:hover { border-color: var(--accent); }
+    .preset-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+
+    /* 底部 */
+    .footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px 12px; border-top: 1px solid var(--border); font-size: var(--fs-s); color: var(--muted); }
+    .version { font-family: var(--mono); }
+
+    /* 保存提示 */
+    .toast {
+      position: fixed; left: 50%; transform: translate(-50%, -50%) scale(0.96);
+      padding: 6px 14px; border-radius: 16px;
+      background: #5dde8b; color: #0e0e12;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+      font-size: var(--fs-m); font-weight: 700;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-title">QuickSeek for Videos</div>
+    <div class="header-sub" data-i18n="headerSub"></div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.3"/><path d="M1.7 8h12.6M8 1.7c-3.2 3.6-3.2 9 0 12.6M8 1.7c3.2 3.6 3.2 9 0 12.6"/></svg>
+        <span data-i18n="siteLabel"></span>
+      </div>
+      <div id="siteBox" hidden>
+        <div class="site-line">
+          <div class="site-icon" id="siteIcon"></div>
+          <div class="site-host" id="siteHost"></div>
+          <label class="site-switch">
+            <span class="toggle"><input type="checkbox" id="siteEnabled" /><span class="toggle-track"></span></span>
+            <span id="siteState"></span>
+          </label>
+        </div>
+        <div class="card-sep"></div>
+        <div class="card-title">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="1.5" y="4" width="13" height="8.5" rx="2"/><path d="M4.5 7h.01M7 7h.01M9.5 7h.01M5 9.8h6"/></svg>
+          <span data-i18n="siteKeysLabel"></span>
+          <span class="kb-hint" data-i18n="keyHint"></span>
+        </div>
+        <div class="key-list" id="siteFeatures"></div>
+      </div>
+      <div class="site-unavailable" id="siteNA" data-i18n="siteUnavailable" hidden></div>
+    </div>
+
+    <div class="card" id="seekCard">
+      <div class="card-title">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="9" r="5.6"/><path d="M8 6v3l2 1.5M6.3 1.6h3.4"/></svg>
+        <span data-i18n="sectionLabel"></span>
+      </div>
+      <div class="seek-display" id="seekDisplay">
+        <button class="seek-btn" id="decBtn">−</button>
+        <div class="seek-value-wrap">
+          <input type="number" class="seek-value" id="seekVal" min="1" max="60" />
+          <span class="seek-unit" data-i18n="seekUnit"></span>
+          <span class="frame-label" data-i18n="frame"></span>
+        </div>
+        <button class="seek-btn" id="incBtn">+</button>
+      </div>
+      <input type="range" id="slider" min="1" max="60" step="1" />
+      <div class="slider-labels"><span data-sec="1"></span><span data-sec="60"></span></div>
+      <div class="presets">
+        <button class="preset-btn" data-val="frame" data-i18n="frame"></button>
+        <button class="preset-btn" data-val="2" data-sec="2"></button>
+        <button class="preset-btn" data-val="5" data-sec="5"></button>
+        <button class="preset-btn" data-val="10" data-sec="10"></button>
+        <button class="preset-btn" data-val="15" data-sec="15"></button>
+        <button class="preset-btn" data-val="30" data-sec="30"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span data-i18n="footerSites"></span>
+    <span class="version" id="version"></span>
+  </div>
+
+  <div class="toast" id="toast" data-i18n="saved"></div>
+
+  <script src="defaults.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
